@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>boredom Skibidi Clicker • DEV BUILD</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0f13;
+    --card: #121821;
+    --muted: #8fa3b6;
+    --text: #e8f0ff;
+
+    /* These will be animated in JS for color cycling */
+    --accent: #7c5cff;
+    --accent-2: #23d5ab;
+    --accent-3: #ee7752;
+
+    --good: #4ad97f;
+    --bad: #ff6b6b;
+    --glow: 0 0 24px rgba(124,92,255,.35), 0 0 48px rgba(35,213,171,.15);
+    --wip: rgba(255, 221, 87, .18);
+  }
+  [data-theme="light"]{
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --muted: #5d6a78;
+    --text: #0d1b2a;
+    --good: #22a66a;
+    --bad: #d64545;
+    --glow: 0 0 12px rgba(91,108,255,.25), 0 0 28px rgba(29,181,141,.15);
+    --wip: rgba(255, 200, 40, .18);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:"Outfit",system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
+    background:
+      radial-gradient(1200px 800px at 75% -10%, rgba(124,92,255,.12), transparent 60%),
+      radial-gradient(900px 600px at 10% 110%, rgba(35,213,171,.12), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .app{
+    width: min(1100px, 95vw);
+    display:grid;
+    grid-template-columns: 1.25fr .95fr;
+    gap: 18px;
+  }
+  @media (max-width: 960px){
+    .app{grid-template-columns: 1fr; padding: 10px 0 24px}
+  }
+
+  .card{
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)) , var(--card);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 18px;
+    box-shadow: var(--glow);
+    backdrop-filter: blur(6px);
+    position:relative;
+  }
+
+  .dev-ribbon{
+    position:absolute; top:12px; right:-46px; transform: rotate(35deg);
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color:#0b1220; font-weight:900; font-size:11px; letter-spacing:.7px;
+    padding:6px 60px; border-radius:8px; box-shadow: 0 8px 22px rgba(0,0,0,.25);
+  }
+
+  .header{
+    grid-column: 1 / -1;
+    padding:16px 18px;
+    display:flex; align-items:center; gap:12px; justify-content:space-between;
+  }
+  .brand{display:flex; align-items:center; gap:12px}
+  .logo{
+    width:36px;height:36px;border-radius:10px;
+    background: conic-gradient(from 210deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+    box-shadow: 0 0 20px rgba(124,92,255,.35);
+  }
+  .title{font-weight:800; letter-spacing:.3px}
+  .subtitle{color:var(--muted); font-size:13px}
+  .controls{display:flex; align-items:center; gap:10px}
+  .btn{
+    appearance:none; border:none; cursor:pointer;
+    padding:10px 14px; border-radius:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
+    color:var(--text); font-weight:600;
+    border:1px solid rgba(255,255,255,.08);
+    transition: transform .06s ease, filter .2s ease, background .2s ease;
+  }
+  .btn:hover{filter:brightness(1.05)}
+  .btn:active{transform:translateY(1px) scale(.99)}
+  .btn.primary{
+    background: linear-gradient(180deg, rgba(124,92,255,.25), rgba(124,92,255,.12));
+    border-color: rgba(124,92,255,.5);
+    box-shadow: 0 8px 22px rgba(124,92,255,.25);
+  }
+  .btn.good{
+    background: linear-gradient(180deg, rgba(34, 166, 106,.20), rgba(34, 166, 106,.08));
+    border-color: rgba(34, 166, 106,.45);
+  }
+  .btn.bad{
+    background: linear-gradient(180deg, rgba(214,69,69,.20), rgba(214,69,69,.08));
+    border-color: rgba(214,69,69,.45);
+  }
+  .toggle{
+    display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.08); cursor:pointer;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
+    user-select:none;
+  }
+  .toggle input{display:none}
+  .toggle .knob{
+    width:34px;height:20px;border-radius:999px; position:relative; background:rgba(255,255,255,.14);
+  }
+  .toggle .knob::after{
+    content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
+    background:linear-gradient(180deg, #fff,#dfe7ff); transition:left .2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  }
+  .toggle input:checked + .knob{background:rgba(124,92,255,.4)}
+  .toggle input:checked + .knob::after{left:16px}
+
+  .play{
+    padding:18px;
+    display:grid; grid-template-rows:auto 1fr auto; gap:16px;
+  }
+  .stats{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+  }
+  .stat{
+    padding:12px; border-radius:12px; border:1px dashed rgba(255,255,255,.09);
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+  }
+  .label{font-size:12px; color:var(--muted); letter-spacing:.3px}
+  .value{font-size:22px; font-weight:700; margin-top:4px}
+
+  .click-area{
+    position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;
+    border-radius:16px; height:360px; border:1px solid rgba(255,255,255,.06);
+    background:
+      radial-gradient(600px 300px at 50% 0%, rgba(124,92,255,.14), transparent 60%),
+      radial-gradient(700px 500px at 60% 120%, rgba(35,213,171,.12), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)),
+      var(--card);
+  }
+
+  .big-button{
+    position:relative;
+    border:none; cursor:pointer;
+    width:min(240px, 70vw); height:min(240px,70vw);
+    border-radius:999px;
+    background: radial-gradient(120px 120px at 35% 35%, rgba(255,255,255,.35), rgba(255,255,255,0)),
+                radial-gradient(120px 120px at 65% 65%, rgba(255,255,255,.18), rgba(255,255,255,0)),
+                conic-gradient(from 210deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+    box-shadow: 0 18px 60px rgba(124,92,255,.35), inset 0 0 40px rgba(255,255,255,.2);
+    transition: transform .15s ease, filter .15s ease;
+    outline: none;
+  }
+  .big-button:hover{filter:brightness(1.05)}
+  .big-button:active{transform: translateY(2px) scale(.98)}
+  .big-button.flush-anim{
+    animation: flushDown .9s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes flushDown{
+    0%{ transform: translateY(0) scale(1) rotate(0deg); filter:brightness(1) }
+    40%{ transform: translateY(20px) scale(.96) rotate(-4deg); }
+    70%{ transform: translateY(90px) scale(.82) rotate(8deg); filter:brightness(0.9)}
+    100%{ transform: translateY(0) scale(1) rotate(0deg); filter:brightness(1)}
+  }
+  .big-button .inner{
+    position:absolute; inset:10%; border-radius:999px;
+    background: radial-gradient(100px 100px at 35% 30%, rgba(255,255,255,.25), rgba(255,255,255,0)),
+                rgba(0,0,0,.15);
+  }
+  .click-label{
+    position:absolute; bottom:14px; font-weight:700; font-size:14px; letter-spacing:.4px;
+    color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.55)
+  }
+
+  .floating{
+    position:absolute; pointer-events:none; user-select:none;
+    font-weight:800;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
+    animation: floatUp .9s ease-out forwards;
+  }
+  @keyframes floatUp{
+    0%{transform:translate(-50%, 0) scale(1); opacity:1}
+    100%{transform:translate(-50%, -80px) scale(.95); opacity:0}
+  }
+  .particle{
+    position:absolute; width:10px;height:10px;border-radius:50%;
+    opacity:0; animation: pop .7s ease-out forwards;
+  }
+  @keyframes pop{
+    0%{transform: translate(0,0) scale(.6); opacity:1}
+    100%{transform: var(--to) scale(0); opacity:0}
+  }
+
+  .shop{
+    padding:18px; display:flex; flex-direction:column; gap:12px;
+  }
+  .section-title{font-size:15px; letter-spacing:.4px; color:var(--muted)}
+  .item{
+    display:flex; gap:12px; align-items:center; justify-content:space-between;
+    border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:12px 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  }
+  .item-main{display:flex; align-items:center; gap:12px}
+  .icon{
+    width:38px;height:38px;border-radius:10px; flex:0 0 auto;
+    background: conic-gradient(from 90deg, rgba(255,255,255,.25), rgba(255,255,255,0));
+    border:1px solid rgba(255,255,255,.08);
+    display:grid; place-items:center; font-size:18px;
+  }
+  .item h4{margin:0; font-size:15px}
+  .item p{margin:2px 0 0; font-size:12px; color:var(--muted)}
+  .price{font-weight:800}
+  .buy{ display:flex; align-items:center; gap:8px; }
+  .buy .btn{padding:8px 12px}
+
+  .progress{
+    height:12px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.08)
+  }
+  .progress > span{
+    display:block; height:100%; width:0;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+    transition: width .25s ease;
+  }
+
+  .footer{
+    grid-column: 1 / -1;
+    padding:12px 16px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px;
+  }
+  .links{display:flex; gap:8px; flex-wrap:wrap}
+  .links .btn{padding:6px 10px; font-size:12px}
+
+  /* Ability buttons */
+  .ability{
+    display:flex; align-items:center; gap:10px;
+    border:1px dashed rgba(255,255,255,.12);
+    background: linear-gradient(180deg, var(--wip), rgba(255,255,255,.02));
+    padding:10px 12px; border-radius:12px;
+  }
+  .cooldown{
+    height:8px; width:120px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden;
+    border:1px solid rgba(255,255,255,.1);
+  }
+  .cooldown > span{
+    display:block; height:100%; width:0%;
+    background:linear-gradient(90deg, var(--accent-3), var(--accent-2));
+    transition: width .2s linear;
+  }
+  .btn[disabled]{opacity:.55; cursor:not-allowed; filter:grayscale(.25)}
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="card header">
+      <div class="dev-ribbon">DEV • WIP</div>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="title">boredom Skibidi Clicker</div>
+          <div class="subtitle">in dev • shifting colors • toilets soon™</div>
+        </div>
+      </div>
+      <div class="controls">
+        <label class="toggle" title="Toggle sound">
+          <input id="soundToggle" type="checkbox" checked>
+          <span class="knob"></span>
+          <span style="font-size:13px">Sound</span>
+        </label>
+        <label class="toggle" title="Toggle theme">
+          <input id="themeToggle" type="checkbox">
+          <span class="knob"></span>
+          <span style="font-size:13px">Light</span>
+        </label>
+        <button class="btn bad" id="resetBtn" title="Wipe progress">Reset</button>
+      </div>
+    </header>
+
+    <main class="card play">
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Score</div>
+          <div class="value" id="score">0</div>
+          <div class="progress" aria-hidden="true"><span id="levelBar"></span></div>
+        </div>
+        <div class="stat">
+          <div class="label">Per Click</div>
+          <div class="value" id="perClick">1</div>
+        </div>
+        <div class="stat">
+          <div class="label">Auto / sec</div>
+          <div class="value" id="perSec">0</div>
+        </div>
+      </div>
+
+      <div class="click-area" id="clickArea">
+        <button class="big-button" id="clickBtn" aria-label="Click to earn points">
+          <div class="inner"></div>
+          <div class="click-label" id="clickHint">CLICK • SPACE • ENTER</div>
+        </button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Level</div>
+          <div class="value" id="level">1</div>
+        </div>
+        <div class="stat">
+          <div class="label">Multiplier</div>
+          <div class="value" id="multi">x1</div>
+        </div>
+        <div class="stat">
+          <div class="label">Autosave</div>
+          <div class="value" id="autosave">Every 5s</div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="card shop">
+      <div class="section-title">Abilities</div>
+
+      <div class="ability">
+        <button class="btn primary" id="toiletSpamBtn">Unlock Toilet Spam (250)</button>
+        <div class="cooldown" title="Cooldown"><span id="toiletCD"></span></div>
+        <div class="label" id="toiletInfo">Locked • spray toilets • tiny bonus</div>
+      </div>
+
+      <div class="ability">
+        <button class="btn primary" id="ultimateFlushBtn">Unlock Ultimate Flush (800)</button>
+        <div class="cooldown" title="Cooldown"><span id="flushCD"></span></div>
+        <div class="label" id="flushInfo">Locked • flush button • spits loot</div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Upgrades & Shop</div>
+
+      <div class="item">
+        <div class="item-main">
+          <div class="icon" style="background: radial-gradient(40px 40px at 30% 30%, rgba(124,92,255,.6), rgba(124,92,255,.2));">🖐️</div>
+          <div>
+            <h4>Finger Strength</h4>
+            <p>+1 base per click • Scales +10% price</p>
+            <div class="price" id="costClick">Cost: 15</div>
+          </div>
+        </div>
+        <div class="buy">
+          <button class="btn primary" id="buyClick">Buy</button>
+          <div class="label">Owned: <span id="ownedClick">0</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="item-main">
+          <div class="icon" style="background: radial-gradient(40px 40px at 30% 30%, rgba(35,213,171,.6), rgba(35,213,171,.2));">🤖</div>
+          <div>
+            <h4>Auto Taps</h4>
+            <p>+1 per second • Scales +15% price</p>
+            <div class="price" id="costAuto">Cost: 50</div>
+          </div>
+        </div>
+        <div class="buy">
+          <button class="btn primary" id="buyAuto">Buy</button>
+          <div class="label">Owned: <span id="ownedAuto">0</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="item-main">
+          <div class="icon" style="background: radial-gradient(40px 40px at 30% 30%, rgba(238,119,82,.65), rgba(238,119,82,.2));">🚀</div>
+          <div>
+            <h4>Global Multiplier</h4>
+            <p>×1.15 to all gains • Scales +22% price</p>
+            <div class="price" id="costMulti">Cost: 120</div>
+          </div>
+        </div>
+        <div class="buy">
+          <button class="btn primary" id="buyMulti">Buy</button>
+          <div class="label">Owned: <span id="ownedMulti">0</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <footer class="card footer">
+      <div>Tip: Hold <b>Space</b> to mash. DEV build — visuals & balance will change.</div>
+      <div class="links">
+        <button class="btn" id="exportBtn" title="Copy save data">Export</button>
+        <button class="btn good" id="importBtn" title="Paste save data">Import</button>
+      </div>
+    </footer>
+  </div>
+
+<script>
+(function(){
+  const $ = sel => document.querySelector(sel);
+
+  // ---------- State ----------
+  const defaultState = {
+    score: 0,
+    clickBase: 1,
+    autoPerSec: 0,
+    multiLevel: 0,
+    ownedClick: 0,
+    ownedAuto: 0,
+    ownedMulti: 0,
+    costClick: 15,
+    costAuto: 50,
+    costMulti: 120,
+
+    // Ability unlocks (one-time purchase)
+    toiletUnlocked: false,
+    toiletCost: 250,
+    flushUnlocked: false,
+    flushCost: 800,
+
+    theme: 'dark',
+    sound: true,
+    createdAt: Date.now(),
+  };
+  let S = loadState();
+
+  // ---------- Elements ----------
+  const scoreEl = $('#score');
+  const perClickEl = $('#perClick');
+  const perSecEl = $('#perSec');
+  const levelEl = $('#level');
+  const levelBar = $('#levelBar');
+  const multiEl = $('#multi');
+  const clickArea = $('#clickArea');
+  const clickBtn = $('#clickBtn');
+
+  const costClickEl = $('#costClick');
+  const costAutoEl = $('#costAuto');
+  const costMultiEl = $('#costMulti');
+  const ownedClickEl = $('#ownedClick');
+  const ownedAutoEl = $('#ownedAuto');
+  const ownedMultiEl = $('#ownedMulti');
+
+  const resetBtn = $('#resetBtn');
+  const themeToggle = $('#themeToggle');
+  const soundToggle = $('#soundToggle');
+  const exportBtn = $('#exportBtn');
+  const importBtn = $('#importBtn');
+
+  // Abilities
+  const toiletSpamBtn = $('#toiletSpamBtn');
+  const ultimateFlushBtn = $('#ultimateFlushBtn');
+  const toiletCDBar = $('#toiletCD');
+  const flushCDBar = $('#flushCD');
+  const toiletInfo = $('#toiletInfo');
+  const flushInfo = $('#flushInfo');
+
+  // ---------- Helpers ----------
+  function fmt(n){
+    if (!isFinite(n)) return '∞';
+    if (n < 1000) return Math.floor(n).toString();
+    const units = ['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+    let u = -1, x = n;
+    while (x >= 1000 && u < units.length-1){ x /= 1000; u++; }
+    return x.toFixed(x < 10 ? 2 : x < 100 ? 1 : 0) + units[u];
+  }
+  function perClick(){
+    const base = S.clickBase;
+    const multi = Math.pow(1.15, S.multiLevel);
+    return Math.max(1, Math.round(base * multi));
+  }
+  function perSec(){
+    const base = S.autoPerSec;
+    const multi = Math.pow(1.15, S.multiLevel);
+    return +(base * multi).toFixed(2);
+  }
+  function levelInfo(score){
+    let L = 1, need = 100; let s = Math.max(0, score);
+    while (s >= need){ s -= need; L++; need = Math.floor(100 * Math.pow(L, 1.2)); }
+    return { level: L, progress: s, required: need };
+  }
+
+  function saveState(){
+    try{ localStorage.setItem('skibidi-clicker-save', JSON.stringify(S)); }catch(e){}
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem('skibidi-clicker-save');
+      if(!raw) return {...defaultState};
+      const parsed = JSON.parse(raw);
+      return { ...defaultState, ...parsed };
+    }catch(e){ return {...defaultState}; }
+  }
+  function hardReset(){
+    S = {...defaultState, theme: S.theme, sound: S.sound};
+    saveState(); render(); toast('Progress reset');
+  }
+
+  function toast(text){
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.position='fixed';
+    el.style.left='50%';
+    el.style.top='18px';
+    el.style.transform='translateX(-50%)';
+    el.style.background='rgba(0,0,0,.6)';
+    el.style.color='#fff';
+    el.style.padding='8px 12px';
+    el.style.borderRadius='10px';
+    el.style.fontWeight='700';
+    el.style.zIndex='9999';
+    el.style.backdropFilter='blur(6px)';
+    el.style.border='1px solid rgba(255,255,255,.15)';
+    document.body.appendChild(el);
+    setTimeout(()=>{el.style.transition='opacity .4s'; el.style.opacity='0';}, 1200);
+    setTimeout(()=>el.remove(), 1700);
+  }
+
+  // ---------- Audio ----------
+  const audioCtx = 'AudioContext' in window ? new AudioContext() : null;
+  function beep(freq=440, time=0.05, type='triangle', gain=0.08){
+    if(!audioCtx || !S.sound) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    setTimeout(()=>{ o.stop(); }, time*1000);
+  }
+
+  // ---------- Particles ----------
+  function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function spawnParticles(x, y, count=14, opts={}){
+    const rect = clickArea.getBoundingClientRect();
+    const cx = x - rect.left, cy = y - rect.top;
+    const palette = [getVar('--accent'),getVar('--accent-2'),getVar('--accent-3'),'#ffd166','#06d6a0','#118ab2','#ef476f'];
+    for(let i=0;i<count;i++){
+      const p = document.createElement('div');
+      p.className='particle';
+      p.style.left = cx+'px';
+      p.style.top = cy+'px';
+      const c = palette[(Math.random()*palette.length)|0];
+      if (opts.emoji){
+        p.style.width='auto'; p.style.height='auto';
+        p.style.fontSize = (opts.emojiSize || 20) + 'px';
+        p.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,.35))';
+        p.textContent = opts.emoji;
+      } else {
+        p.style.background = `radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), ${c})`;
+        p.style.width = (opts.size || 10) + 'px';
+        p.style.height = (opts.size || 10) + 'px';
+      }
+      const dx = (Math.random()*2-1)*(opts.spread || 120);
+      const dy = (Math.random()*2-1)*(opts.spread || 120);
+      p.style.setProperty('--to', `translate(${dx}px, ${dy}px)`);
+      clickArea.appendChild(p);
+      setTimeout(()=>p.remove(), opts.life || 900);
+    }
+  }
+  function floatText(x, y, text, tint='#fff', size=18){
+    const rect = clickArea.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className='floating';
+    el.textContent = text;
+    el.style.left = (x - rect.left) + 'px';
+    el.style.top = (y - rect.top - 10) + 'px';
+    el.style.color = tint;
+    el.style.fontSize = size + 'px';
+    clickArea.appendChild(el);
+    setTimeout(()=>el.remove(), 900);
+  }
+
+  function centerOfButton(){
+    const r = clickBtn.getBoundingClientRect();
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
+  }
+
+  // ---------- Rendering ----------
+  function render(){
+    scoreEl.textContent = fmt(Math.floor(S.score));
+    perClickEl.textContent = fmt(perClick());
+    perSecEl.textContent = fmt(perSec());
+    const li = levelInfo(S.score);
+    levelEl.textContent = li.level;
+    levelBar.style.width = Math.min(100, (li.progress/li.required)*100) + '%';
+    multiEl.textContent = 'x' + Math.pow(1.15, S.multiLevel).toFixed(2);
+
+    costClickEl.textContent = 'Cost: ' + fmt(Math.floor(S.costClick));
+    costAutoEl.textContent  = 'Cost: ' + fmt(Math.floor(S.costAuto));
+    costMultiEl.textContent = 'Cost: ' + fmt(Math.floor(S.costMulti));
+    ownedClickEl.textContent = S.ownedClick;
+    ownedAutoEl.textContent  = S.ownedAuto;
+    ownedMultiEl.textContent = S.ownedMulti;
+
+    if (S.theme === 'light') document.documentElement.setAttribute('data-theme','light');
+    else document.documentElement.removeAttribute('data-theme');
+    themeToggle.checked = (S.theme === 'light');
+    soundToggle.checked = !!S.sound;
+
+    updateAbilityUI();
+  }
+
+  function updateAbilityUI(){
+    // Toilet Spam
+    if (!S.toiletUnlocked){
+      toiletSpamBtn.textContent = `Unlock Toilet Spam (${fmt(S.toiletCost)})`;
+      toiletInfo.textContent = 'Locked • spray toilets • tiny bonus';
+      toiletCDBar.style.width = '0%';
+      toiletSpamBtn.disabled = false; // allow clicking to purchase
+    } else {
+      toiletSpamBtn.textContent = 'Toilet Spam 🚽';
+      toiletInfo.textContent = 'Unlocked • spray toilets • tiny bonus';
+    }
+
+    // Ultimate Flush
+    if (!S.flushUnlocked){
+      ultimateFlushBtn.textContent = `Unlock Ultimate Flush (${fmt(S.flushCost)})`;
+      flushInfo.textContent = 'Locked • flush button • spits loot';
+      flushCDBar.style.width = '0%';
+      ultimateFlushBtn.disabled = false; // allow clicking to purchase
+    } else {
+      ultimateFlushBtn.textContent = 'Ultimate Flush 💥';
+      flushInfo.textContent = 'Unlocked • flush button • spits loot';
+    }
+  }
+
+  // ---------- Game Logic ----------
+  function addScore(n){ S.score += n; }
+
+  function handleManualClick(ev){
+    let x = ev?.clientX, y = ev?.clientY;
+    if (x == null || y == null){ const c = centerOfButton(); x = c.x; y = c.y; }
+    const gain = perClick();
+    addScore(gain);
+    spawnParticles(x, y, 12 + Math.floor(Math.random()*6));
+    floatText(x, y, '+'+fmt(gain), '#ffffff');
+    beep(520 + Math.random()*60, 0.04, 'triangle', 0.06);
+    render();
+  }
+
+  function canAfford(cost){ return S.score >= cost; }
+  function buy(costProp, ownedProp, onBuy){
+    const cost = S[costProp];
+    if(!canAfford(cost)){
+      toast('Not enough!');
+      beep(180, 0.05, 'sine', 0.04);
+      return false;
+    }
+    S.score -= cost;
+    S[ownedProp] += 1;
+    onBuy?.();
+    render();
+    return true;
+  }
+
+  // Upgrades
+  $('#buyClick').addEventListener('click', ()=>{
+    buy('costClick','ownedClick', ()=>{
+      S.clickBase += 1;
+      S.costClick = Math.ceil(S.costClick * 1.10);
+      const c = centerOfButton();
+      floatText(c.x, clickArea.getBoundingClientRect().top+30, '+1 per click', getVar('--accent'), 16);
+      beep(700, 0.05, 'sawtooth', 0.045);
+    });
+  });
+
+  $('#buyAuto').addEventListener('click', ()=>{
+    buy('costAuto','ownedAuto', ()=>{
+      S.autoPerSec += 1;
+      S.costAuto = Math.ceil(S.costAuto * 1.15);
+      const c = centerOfButton();
+      floatText(c.x, clickArea.getBoundingClientRect().top+30, '+1 auto/sec', getVar('--accent-2'), 16);
+      beep(600, 0.05, 'square', 0.045);
+    });
+  });
+
+  $('#buyMulti').addEventListener('click', ()=>{
+    buy('costMulti','ownedMulti', ()=>{
+      S.multiLevel += 1;
+      S.costMulti = Math.ceil(S.costMulti * 1.22);
+      const c = centerOfButton();
+      floatText(c.x, clickArea.getBoundingClientRect().top+30, '×1.15 multiplier', getVar('--accent-3'), 16);
+      beep(820, 0.06, 'triangle', 0.05);
+    });
+  });
+
+  // Auto tick (10 Hz)
+  setInterval(()=>{
+    const gainPerTick = perSec() / 10;
+    if(gainPerTick > 0){
+      S.score += gainPerTick;
+      const li = levelInfo(S.score);
+      levelBar.style.width = Math.min(100, (li.progress/li.required)*100) + '%';
+    }
+  }, 100);
+
+  // Coarse UI refresh + autosave
+  setInterval(render, 200);
+  setInterval(saveState, 5000);
+
+  // ---------- Inputs ----------
+  clickBtn.addEventListener('click', handleManualClick);
+  clickArea.addEventListener('click', (e)=>{
+    if(e.target === clickArea) handleManualClick(e);
+  });
+  window.addEventListener('keydown', (e)=>{
+    if(e.repeat) return;
+    if(e.code === 'Space' || e.code === 'Enter'){
+      e.preventDefault();
+      handleManualClick();
+      clickBtn.classList.add('pressing');
+      setTimeout(()=>clickBtn.classList.remove('pressing'), 80);
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    if(confirm('Reset all progress?')) hardReset();
+  });
+
+  themeToggle.addEventListener('change', ()=>{
+    S.theme = themeToggle.checked ? 'light' : 'dark';
+    render(); saveState();
+  });
+  soundToggle.addEventListener('change', ()=>{
+    S.sound = soundToggle.checked;
+    render(); saveState();
+    if(S.sound && audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume().catch(()=>{}); }
+  });
+
+  exportBtn.addEventListener('click', ()=>{
+    const data = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+    navigator.clipboard.writeText(data).then(()=> toast('Save copied to clipboard'))
+    .catch(()=>{
+      const t = document.createElement('textarea'); t.value = data; document.body.appendChild(t);
+      t.select(); document.execCommand('copy'); t.remove(); toast('Save copied');
+    });
+  });
+  importBtn.addEventListener('click', ()=>{
+    const data = prompt('Paste your save data:');
+    if(!data) return;
+    try{
+      const obj = JSON.parse(decodeURIComponent(escape(atob(data))));
+      S = { ...defaultState, ...obj };
+      saveState(); render(); toast('Save imported!');
+    }catch(e){ toast('Invalid save data'); }
+  });
+
+  // ---------- Abilities as Purchases ----------
+  const TOILET_CD = 12 * 1000; // 12 secs cooldown
+  const FLUSH_CD  = 35 * 1000; // 35 secs cooldown so u cant spam the toillet
+  let toiletReadyAt = 0;
+  let flushReadyAt = 0;
+
+  toiletSpamBtn.addEventListener('click', ()=>{
+    if (!S.toiletUnlocked){
+      if (canAfford(S.toiletCost)){
+        S.score -= S.toiletCost;
+        S.toiletUnlocked = true;
+        toast('Unlocked: Toilet Spam 🚽');
+        beep(640, 0.08, 'triangle', 0.06);
+        render(); saveState();
+      } else {
+        toast('Not enough to unlock Toilet Spam');
+        beep(180, 0.05, 'sine', 0.04);
+      }
+      return;
+    }
+    if(Date.now() < toiletReadyAt){ return; }
+    toiletReadyAt = Date.now() + TOILET_CD;
+    runToiletSpam();
+  });
+
+  ultimateFlushBtn.addEventListener('click', ()=>{
+    if (!S.flushUnlocked){
+      if (canAfford(S.flushCost)){
+        S.score -= S.flushCost;
+        S.flushUnlocked = true;
+        toast('Unlocked: Ultimate Flush 💥');
+        beep(700, 0.1, 'triangle', 0.07);
+        render(); saveState();
+      } else {
+        toast('Not enough to unlock Ultimate Flush');
+        beep(180, 0.05, 'sine', 0.04);
+      }
+      return;
+    }
+    if(Date.now() < flushReadyAt){ return; }
+    flushReadyAt = Date.now() + FLUSH_CD;
+    runUltimateFlush();
+  });
+
+  function runToiletSpam(){
+    const rect = clickArea.getBoundingClientRect();
+    const duration = 1600;
+    const start = performance.now();
+    const spray = ()=> {
+      const now = performance.now();
+      spawnParticles(
+        rect.left + Math.random()*rect.width,
+        rect.top + Math.random()*rect.height*0.6 + rect.height*0.2,
+        1,
+        { emoji:'🚽', emojiSize: 26 + Math.random()*10, spread: 220, life: 1200 }
+      );
+      addScore(0.5 * perClick()); // tiny bonus per spray
+      if (now - start < duration){
+        requestAnimationFrame(spray);
+      }else{
+        toast('Toilet Spam done');
+        render();
+      }
+    };
+    spray();
+    beep(320, 0.08, 'square', 0.06);
+    beep(520, 0.08, 'triangle', 0.05);
+  }
+
+  function runUltimateFlush(){
+    clickBtn.classList.add('flush-anim');
+    const rect = clickArea.getBoundingClientRect();
+    for(let i=0;i<14;i++){
+      setTimeout(()=>{
+        spawnParticles(
+          rect.left + rect.width/2,
+          rect.top + rect.height/2 + 30,
+          6,
+          { size: 10, spread: 160, life: 800 }
+        );
+        beep(260 + i*6, 0.03, 'sine', 0.04);
+      }, i*40);
+    }
+    setTimeout(()=>{
+      const bonus = Math.floor(60 * perClick() + 20 * (1+S.multiLevel*0.6));
+      addScore(bonus);
+      spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 50, { emoji:'💦', emojiSize: 22, spread: 260, life: 1200 });
+      spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 40, { emoji:'🚽', emojiSize: 24, spread: 260, life: 1400 });
+      floatText(rect.left + rect.width/2, rect.top + rect.height/2, '+'+fmt(bonus), getVar('--accent-3'), 22);
+      beep(720, 0.10, 'triangle', 0.07);
+      clickBtn.classList.remove('flush-anim');
+      render();
+    }, 950);
+  }
+
+  // Cooldown bars and enabled/disabled state
+  function updateCooldownBars(){
+    const now = Date.now();
+
+    // Toilet
+    if (S.toiletUnlocked){
+      const remaining = Math.max(0, toiletReadyAt - now);
+      const pct = 1 - (remaining / TOILET_CD);
+      toiletCDBar.style.width = Math.max(0, Math.min(1, pct)) * 100 + '%';
+      toiletSpamBtn.disabled = remaining > 0;
+    } else {
+      toiletCDBar.style.width = '0%';
+      toiletSpamBtn.disabled = false; // still clickable to purchase
+    }
+
+    // Flush
+    if (S.flushUnlocked){
+      const remaining = Math.max(0, flushReadyAt - now);
+      const pct = 1 - (remaining / FLUSH_CD);
+      flushCDBar.style.width = Math.max(0, Math.min(1, pct)) * 100 + '%';
+      ultimateFlushBtn.disabled = remaining > 0;
+    } else {
+      flushCDBar.style.width = '0%';
+      ultimateFlushBtn.disabled = false; // clickable to purchase
+    }
+
+    requestAnimationFrame(updateCooldownBars);
+  }
+
+  // Start
+  render();
+  updateCooldownBars();
+})();
+</script>
+</body>
+</html>
